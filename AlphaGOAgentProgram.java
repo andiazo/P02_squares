@@ -5,8 +5,9 @@
  */
 package uniltiranyu.examples.games.squares;
 
-import java.util.ArrayList;
-import java.util.Arrays;
+import static java.lang.Integer.max;
+import static java.lang.Integer.min;
+import java.util.LinkedList;
 import java.util.List;
 
 import speco.array.Array;
@@ -31,34 +32,48 @@ public class AlphaGOAgentProgram implements AgentProgram {
         this.color = color;        
     }
     
-    public Graph createGameTree() {
-        Graph gameTree = new Graph();
-        return gameTree;
-    }
-    
     // Who get more points function
-    public int[] howPoints(Percept p) {
+    public int[] howPoints(TreeNode node) {
+        int[][][] b = node.board;
         int[] points = new int[2];
         return points;
     }
     
     // Heuristic Function
-    public int evaluate(int node) {
+    public int evaluate(TreeNode node) {
         int score = 0;
         return score;
     }
     
-    // Alpha Beta Algorithm
-    public int decisionAlphaBeta() {
-        return 0;
-    }
-    
-    public int maxValue() {
-        return 0;
-    }
-    
-    public int minValue() {
-        return 0;   
+    // Alpha Beta Algorithm  
+    public int decisionAlphaBeta(TreeNode node, int depth, int alpha, int beta, boolean maxPlayer) {
+        int value;
+        if (depth == 0) {
+            return evaluate(node);
+        }
+        if (maxPlayer) {
+            value = -2147483648; // - infinite 
+            for (TreeNode childNode : node.children) {
+                value = max(value, decisionAlphaBeta(childNode, depth-1, alpha, beta, false));
+                alpha = max(alpha, value);
+                if (alpha >= beta) {
+                    break;
+                }
+            }
+            return value;
+        }
+        
+        else {
+            value = 2147483647; // + infinite
+            for (TreeNode childNode : node.children) {
+                value = min(value, decisionAlphaBeta(childNode, depth-1, alpha, beta, true));
+                beta = min(beta, value);
+                if (beta <= alpha) {
+                    break;
+                }
+            }
+            return value;
+        }
     }
     
     @Override
@@ -107,109 +122,24 @@ public class AlphaGOAgentProgram implements AgentProgram {
 
 // -----------------------------------------------------------------------------
 // Data Structures Required
+class TreeNode {
+    int[][][] board;
+    int[] move;
+    TreeNode parent;
+    List<TreeNode> children;
 
-// Graph for the Game Tree
-class Graph {
-    private List<Node> nodes;
-    
-    public void addNode(Node node) {
-        if (nodes == null) {
-            nodes = new ArrayList<>();
-        }
-        nodes.add(node);
-    }
- 
-    public List<Node> getNodes() {
-        return nodes;
-    }
- 
-    @Override
-    public String toString() {
-        return "Graph [ nodes = (" + nodes + ") ]";
-    }
-}
-    
-// Node
-class Node {
-    private int[][][] board;
-    private boolean player;    
-    private List<Edge> edges;
- 
-    public Node(int[][][] board) {
+    public TreeNode(int[][][] board, int[] move) {
         this.board = board;
+        this.move = move;
+        this.children = new LinkedList<TreeNode>();
     }
- 
-    public int[][][] getBoard() {
-        return board;
-    }
- 
-    public void setBoard(int[][][] board) {
-        this.board = board;
-    }
- 
-    public List<Edge> getEdges() {
-        return edges;
-    }
- 
-    public void addEdge(Edge edge) {
-        if (edges == null) {
-            edges = new ArrayList<>();
-        }
-        edges.add(edge);
-    }
-    
-    public void setPlayer(boolean player) {
-        this.player = player;
-    }
-    
-    public boolean getPlayer() {
-        return player;
-    }
-    
-    @Override
-    public String toString() {
-        return "\n \tNode [city=" + Arrays.toString(board) + ", edges=" + edges + "]";
-    }
-}
 
-class Edge {
-    private Node origin;
-    private Node destination;
-    private int[] move = new int[3]; //[0] -> i | [1] -> j | [2] -> position
- 
-    public Edge(Node origin, Node destination, int[] move) {
-        this.origin = origin;
-        this.destination = destination;
-        this.move = move;
+    public TreeNode addChild(int[][][] cBoard, int[] mBoard) {
+        TreeNode childNode = new TreeNode(cBoard, mBoard);
+        childNode.parent = this;
+        this.children.add(childNode);
+        return childNode;
     }
- 
-    public Node getOrigin() {
-        return origin;
-    }
- 
-    public void setOrigin(Node origin) {
-        this.origin = origin;
-    }
- 
-    public Node getDestination() {
-        return destination;
-    }
- 
-    public void setDestination(Node destination) {
-        this.destination = destination;
-    }
- 
-    public int[] getDistance() {
-        return move;
-    }
- 
-    public void setDistance(int[] move) {
-        this.move = move;
-    }
- 
-    @Override
-    public String toString() {
-        return "\n Move: " + Arrays.toString(move) + "]";
-    }
- 
+
+    // other features ..
 }
