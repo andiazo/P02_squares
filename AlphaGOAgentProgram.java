@@ -34,54 +34,111 @@ public class AlphaGOAgentProgram implements AgentProgram {
         this.color = color;        
     }
     
-    public TreeNode createGameTree(Percept p) {
+    public TreeNode createGameTreeRoot(Percept p) {
         
         boolean maxPlayer = p.get(Squares.TURN).equals(color);
-        
         // Build de board
+        boolean isWhite = p.get(Squares.TURN).equals(Squares.WHITE);
         int size = Integer.parseInt((String)p.get(Squares.SIZE));
-        int[][][] board = new int[size][size][4];
+        Board board = new Board(size);
         
         for ( int i = 0; i < size; i++ ) {
-            for ( int j = 0; j < size; j++ ) {
-                
+            for ( int j = 0; j < size; j++ ) {       
                 if(((String)p.get(i+":"+j+":"+Squares.LEFT)).equals(Squares.TRUE))
-                    board[i][j][0] = 1;
-                else
-                    board[i][j][0] = 0;
-                
+                    board.play(isWhite, i, j, Board.LEFT);             
                 if(((String)p.get(i+":"+j+":"+Squares.TOP)).equals(Squares.TRUE))
-                    board[i][j][1] = 1;
-                else
-                    board[i][j][1] = 0;
-                
+                    board.play(isWhite, i, j, Board.TOP);
                 if(((String)p.get(i+":"+j+":"+Squares.BOTTOM)).equals(Squares.TRUE))
-                    board[i][j][2] = 1;
-                else
-                    board[i][j][2] = 0;
-                
+                    board.play(isWhite, i, j, Board.BOTTOM);
                 if(((String)p.get(i+":"+j+":"+Squares.RIGHT)).equals(Squares.TRUE))
-                    board[i][j][3] = 1;
-                else
-                    board[i][j][3] = 0;
-                
+                    board.play(isWhite, i, j, Board.RIGHT);
             }
         }
-
-        TreeNode node = new TreeNode(board);
+        TreeNode node = new TreeNode(board, maxPlayer, 0);
         return node;
     }
     
-    // Who get more points function
-    public int[] howPoints(TreeNode node) {
-        int[][][] b = node.board;
-        int[] points = new int[2];
-        return points;
+    public TreeNode createGameTree(TreeNode root, int maxDepth, int size) {
+        Board rootBoard = root.board;
+        boolean rootMaxPlayer = root.maxPlayer;
+        int currentDepth = root.depth;
+        if (currentDepth >= maxDepth) {
+            return root;
+        }
+        int ccolor;
+        if(rootMaxPlayer) {
+            if(Squares.WHITE.equals(color)){
+                ccolor = 0;
+            }
+            else {
+                ccolor = 1;
+            }
+        }
+        else {
+            if(Squares.WHITE.equals(color)){
+                ccolor = 1;
+            }
+            else {
+                ccolor = 0;
+            }
+        }
+        
+        int[] mBoard = new int[4]; // color, row, col, side
+        Board cBoard = new Board(size);
+        
+        
+        ArrayList<int[]> possibleMovements = new ArrayList<>();
+        int[] posMove = new int[4];
+        for (int row = 0; row < rootBoard.values.length; row++) {
+            for (int col = 0; col < rootBoard.values.length; col++) {
+                //LEFT:1, TOP:2, RIGTH:4, BOTTOM:8, WHITE:16, BLACK:32
+                posMove[0] = ccolor;
+                posMove[1] = row;
+                posMove[2] = col;
+                if((rootBoard.values[row][col] & Board.LEFT)==Board.LEFT) {
+                    posMove[2] = Board.LEFT; // LEFT
+                    possibleMovements.add(posMove);
+                }
+                if((rootBoard.values[row][col] & Board.TOP)==Board.TOP) {
+                    posMove[2] = Board.TOP; // TOP
+                    possibleMovements.add(posMove);
+                }
+                if((rootBoard.values[row][col] & Board.RIGHT)==Board.RIGHT) {
+                    posMove[2] = Board.RIGHT; // RIGTH
+                    possibleMovements.add(posMove);
+                }
+                if((rootBoard.values[row][col] & Board.BOTTOM)==Board.BOTTOM) {
+                    posMove[2] = Board.BOTTOM; // BOTTOM
+                    possibleMovements.add(posMove);
+                }
+            }
+        }
+        
+        if ( possibleMovements.size() == 0) {
+            return root;
+        }
+        
+        boolean isWhite = (ccolor==1)? true:false;
+        int cont = 0;
+        for( int[] pm : possibleMovements) {
+            // create TreeNodes
+            Board boardCopy = cBoard;
+            boardCopy.play(isWhite,pm[1],pm[2],pm[3]);
+            System.out.println("PLAY"+pm[1]+pm[2]+pm[3]);
+            System.out.println(boardCopy.toString());
+            root.addChild(boardCopy, pm, true, currentDepth+1);
+            TreeNode child = root.children.get(cont);
+            cont ++;
+        }
+        return root;
     }
     
     // Heuristic Function
     public int evaluate(TreeNode node) {
-        int score = 0;
+        Board board = node.board;
+        int scoreWhite = board.white_count();
+        int scoreBlack = board.black_count();
+        int score = scoreWhite-scoreBlack;
         return score;
     }
     
@@ -120,19 +177,15 @@ public class AlphaGOAgentProgram implements AgentProgram {
         ArrayList<String> possibleMovements = new ArrayList<String>();
         if(((String)p.get(row+":"+col+":"+Squares.LEFT)).equals(Squares.FALSE)) {
             possibleMovements.add(Squares.LEFT);
-            System.out.println("|||||| left ||||||||");
         }
         if(((String)p.get(row+":"+col+":"+Squares.TOP)).equals(Squares.FALSE)) {
             possibleMovements.add(Squares.TOP);
-            System.out.println("|||||| top ||||||||");
         }
         if(((String)p.get(row+":"+col+":"+Squares.BOTTOM)).equals(Squares.FALSE)) {
             possibleMovements.add(Squares.BOTTOM);
-            System.out.println("|||||| bottom ||||||||");
         }
         if(((String)p.get(row+":"+col+":"+Squares.RIGHT)).equals(Squares.FALSE)) {
             possibleMovements.add(Squares.RIGHT);
-            System.out.println("|||||| right ||||||||");
         }
         return possibleMovements;
     }
@@ -179,6 +232,20 @@ public class AlphaGOAgentProgram implements AgentProgram {
         return adjacents;
     }
     
+    public void prueba(Percept p) {
+        TreeNode root = createGameTreeRoot(p);
+        int maxDepth = 2;
+        int size = Integer.parseInt((String)p.get(Squares.SIZE));
+        root = createGameTree(root, maxDepth, size);
+        System.out.println("Root: "+root.depth);
+        System.out.println(root.board.toString());
+        System.out.println("Children Size: "+root.children.size());
+        for(TreeNode r : root.children) {
+            System.out.println("Child:" + r.depth);
+            System.out.println(r.board.toString());
+        }
+    }
+    
     @Override
     /**
      * Computes an action to be carried by the agent according to the perception
@@ -187,7 +254,7 @@ public class AlphaGOAgentProgram implements AgentProgram {
      */
     public Action compute(Percept p) {
         // Determines if it is the agents turn
-        
+        prueba(p);
         if( p.get(Squares.TURN).equals(color) ){
             // Gets the size of the board
             int size = Integer.parseInt((String)p.get(Squares.SIZE));
@@ -251,15 +318,27 @@ public class AlphaGOAgentProgram implements AgentProgram {
                         pos = -1;
                         break inicio;
                     }
-                    else {
-                        ij[0] = 0;
-                        ij[1] = 1;
-                        v = Squares.TOP;
-                        System.out.println("Si es ESTE");
-                        pos = -1;
-                    }
                 }
             }
+            
+            if (v == null) {
+                    v = "";
+                    int i1=0,j1=0;
+                    while(v==""){
+                        i1 = (int)(size*Math.random());
+                        j1 = (int)(size*Math.random());
+                        pm = linesOnBox(p, i1, j1);
+                        if(pm.size()>0){
+                            v=pm.get(0);
+                        }
+                    }
+                    ij[0] = i1;
+                    ij[1] = j1;
+                    System.out.println("Si es ESTE");
+                    pos = -1; 
+                }
+                 
+            
             try{
             	String move = v;
                 int i = ij[0];
@@ -281,24 +360,29 @@ public class AlphaGOAgentProgram implements AgentProgram {
 // -----------------------------------------------------------------------------
 // Data Structures Required
 class TreeNode {
-    int[][][] board;
+    Board board;
     int[] move;
+    int depth;
+    boolean maxPlayer;
     TreeNode parent;
     List<TreeNode> children;
     
-    public TreeNode(int[][][] board, int[] move) {
+    public TreeNode(Board board, int[] move, boolean maxPlayer, int depth) {
+        this.depth = depth;
         this.board = board;
         this.move = move;
         this.children = new LinkedList<TreeNode>();
     }
     
-    public TreeNode(int[][][] board) {
+    public TreeNode(Board board, boolean maxPlayer, int depth) {
+        this.depth = depth;
         this.board = board;
+        this.maxPlayer = maxPlayer;
         this.children = new LinkedList<TreeNode>();
     }
 
-    public TreeNode addChild(int[][][] cBoard, int[] mBoard) {
-        TreeNode childNode = new TreeNode(cBoard, mBoard);
+    public TreeNode addChild(Board cBoard, int[] mBoard, boolean maxPlayer, int depth) {
+        TreeNode childNode = new TreeNode(cBoard, mBoard, maxPlayer, depth);
         childNode.parent = this;
         this.children.add(childNode);
         return childNode;
