@@ -97,9 +97,9 @@ public class AlphaGOAgentProgram implements AgentProgram {
                     posMove[1] = row;
                     posMove[2] = col;
                     posMove[3] = Board.RIGHT; // RIGTH
-                    System.out.println(color + " PM "+posMove[0]+posMove[1]
-                            +posMove[2]+posMove[3]);
-                    System.out.println("RIGHT"+Board.RIGHT);
+                    // System.out.println(color + " PM "+posMove[0]+posMove[1]
+                    //        +posMove[2]+posMove[3]);
+                    //System.out.println("RIGHT"+Board.RIGHT);
                     possibleMovements.add(posMove);
                 }
                 if((rootBoard.values[row][col] & Board.BOTTOM)!=Board.BOTTOM) {
@@ -108,9 +108,9 @@ public class AlphaGOAgentProgram implements AgentProgram {
                     posMove[1] = row;
                     posMove[2] = col;
                     posMove[3] = Board.BOTTOM; // BOTTOM
-                    System.out.println(color + " PM "+posMove[0]+posMove[1]
-                            +posMove[2]+posMove[3]);
-                    System.out.println("BOTTOM"+Board.BOTTOM);
+                    //System.out.println(color + " PM "+posMove[0]+posMove[1]
+                    //        +posMove[2]+posMove[3]);
+                    //System.out.println("BOTTOM"+Board.BOTTOM);
                     possibleMovements.add(posMove);
                 }
             }
@@ -159,23 +159,23 @@ public class AlphaGOAgentProgram implements AgentProgram {
         
         boolean isWhite = (ccolor==1)? true:false;
         int cont = 0;
-        System.out.println("PM SIZE " + possibleMovements.size());
+        //System.out.println("PM SIZE " + possibleMovements.size());
                 
         for( int i = 0; i < possibleMovements.size(); i++) {
             int[] pm = possibleMovements.get(i);
             // create TreeNodes
             Board boardCopy = copyBoard(rootBoard, null, 2);
             if(boardCopy.play(isWhite,pm[1],pm[2],pm[3])) {
-                System.out.println(color + "PLAY"+pm[1]+pm[2]+pm[3]);
-                System.out.println(boardCopy.toString());
+                //System.out.println(color + "PLAY"+pm[1]+pm[2]+pm[3]);
+                //System.out.println(boardCopy.toString());
                 root.addChild(boardCopy, pm, true, currentDepth+1);
                 TreeNode child = root.children.get(cont);
                 child = createGameTree(child, maxDepth,size);
             }
             else {
-                System.out.println(color + "NO PLAY");
-                System.out.println("PM |"+pm[0]+" | "+pm[1]+" | "
-                        +pm[2]+" | "+pm[3]);
+                //System.out.println(color + "NO PLAY");
+                //System.out.println("PM |"+pm[0]+" | "+pm[1]+" | "
+                //        +pm[2]+" | "+pm[3]);
             }
             cont ++;
         }
@@ -293,19 +293,20 @@ public class AlphaGOAgentProgram implements AgentProgram {
         }
     }*/
     
-    public void prueba(Percept p) {
+    public TreeNode prueba(Percept p) {
         System.out.println("PRUEBA ");
         TreeNode root = createGameTreeRoot(p);
-        int maxDepth = 2;
+        int maxDepth = 3;
         int size = Integer.parseInt((String)p.get(Squares.SIZE));
         ArrayList<int[]> posM = new ArrayList<>();
         root = createGameTree(root, maxDepth, size);
         System.out.println("ROOT"+root.depth);
         System.out.println(root.board.toString());
-        StringBuilder buffer = null;
+        StringBuilder buffer = new StringBuilder(100);
         String prefix = "|"; 
         String childrenPrefix = "-";
-        root.printTree(buffer, prefix, childrenPrefix);
+        System.out.println(root.printTree(buffer, prefix, childrenPrefix));
+        return root;
         
     }
     
@@ -317,7 +318,8 @@ public class AlphaGOAgentProgram implements AgentProgram {
      */
     public Action compute(Percept p) {
         // Determines if it is the agents turn
-        prueba(p);
+        TreeNode pr = prueba(p);
+        
         if( p.get(Squares.TURN).equals(color) ){
             // Gets the size of the board
             int size = Integer.parseInt((String)p.get(Squares.SIZE));
@@ -451,11 +453,18 @@ class TreeNode {
         return childNode;
     }
     
-    public void printTree(StringBuilder buffer, String prefix, String childrenPrefix) {
-        String m = " "+this.move[1]+" "+this.move[2]+" "+this.move[3];
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        String s = Integer.toString(depth);
+        sb.append(s);
+        return sb.toString();
+    }
+    
+    public StringBuilder printTree(StringBuilder buffer, String prefix, String childrenPrefix) {
         buffer.append(prefix);
-        buffer.append(m);
+        buffer.append(depth);
         buffer.append('\n');
+        
         for (Iterator<TreeNode> it = children.iterator(); it.hasNext();) {
             TreeNode next = it.next();
             if (it.hasNext()) {
@@ -464,6 +473,20 @@ class TreeNode {
                 next.printTree(buffer, childrenPrefix + "└── ", childrenPrefix + "    ");
             }
         }
+        return buffer;
+        /*String m = Integer.toString(depth);
+        buffer.append(prefix);
+        buffer.append(m);
+        buffer.append('\n');
+        System.out.println("THIS" + this);
+        for (Iterator<TreeNode> it = children.iterator(); it.hasNext();) {
+            TreeNode next = it.next();
+            if (it.hasNext()) {
+                next.printTree(buffer, childrenPrefix + "├── ", childrenPrefix + "│   ");
+            } else {
+                next.printTree(buffer, childrenPrefix + "└── ", childrenPrefix + "    ");
+            }
+        }*/
     }
     // other features ..
 }
