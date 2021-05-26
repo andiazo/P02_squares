@@ -10,9 +10,9 @@ import static java.lang.Integer.min;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Arrays;
 import java.util.Iterator;
-//import speco.array.Array;
+
+import speco.array.Array;
 import uniltiranyu.Action;
 import uniltiranyu.AgentProgram;
 import uniltiranyu.Percept;
@@ -21,6 +21,7 @@ import uniltiranyu.Percept;
  *
  * @author AndresDiaz
  */
+
 public class AlphaGOAgentProgram implements AgentProgram {
     // Player's color
     protected String color;
@@ -36,13 +37,19 @@ public class AlphaGOAgentProgram implements AgentProgram {
     }
     
     public Board copyBoard(Board board, Percept p, int opc) {
-        /*opc 1 -> trabaja con Percept p
-          opc 2 -> trabaja con Board board*/
+        /*
+        Realiza una copia profunda de un Board
+          opc 1 -> trabaja con Percept p
+          opc 2 -> trabaja con Board board
+        */
         Board bcopy;
-        if (opc == 1) { //Percept p
+        
+        if ( opc == 1 ) { //Percept p
+            
             boolean isWhite = p.get(Squares.TURN).equals(Squares.WHITE);
             int size = Integer.parseInt((String)p.get(Squares.SIZE));
             bcopy = new Board(size);
+            
             for ( int i = 0; i < size; i++ ) {
                 for ( int j = 0; j < size; j++ ) {       
                     if(((String)p.get(i+":"+j+":"+Squares.LEFT)).equals(Squares.TRUE))
@@ -54,10 +61,13 @@ public class AlphaGOAgentProgram implements AgentProgram {
                     if(((String)p.get(i+":"+j+":"+Squares.RIGHT)).equals(Squares.TRUE))
                         bcopy.play(isWhite, i, j, Board.RIGHT);
                 }
-        }
+            }
+            
         } else { // Board board
+            
             int size = board.values.length;
             bcopy = new Board(size);
+            
             for ( int i = 0; i < size; i++ ) {
                 for ( int j = 0; j < size; j++ ) {
                     bcopy.values[i][j] = board.values[i][j];
@@ -69,48 +79,45 @@ public class AlphaGOAgentProgram implements AgentProgram {
     }
     
     public TreeNode createGameTreeRoot(Percept p) {
+        /*
+        Crea la raiz del Arbol del juego
+        */
         
         boolean maxPlayer = p.get(Squares.TURN).equals(color);
-        // Build de board
-        boolean isWhite = p.get(Squares.TURN).equals(Squares.WHITE);
-        int size = Integer.parseInt((String)p.get(Squares.SIZE));
         Board board = copyBoard(null, p, 1);
-        int[] pm = {0,0,0,0};
-        TreeNode node = new TreeNode(board, pm, maxPlayer, 0);
-        return node;
+        int[] move = {0,0,0,0};
+        TreeNode rootNode = new TreeNode(board, move, maxPlayer, 0);
+        return rootNode;
+        
     }
     
-    public ArrayList<int[]> possibleMovements(Board rootBoard, int ccolor){
+    public ArrayList<int[]> possibleMovements(Board rootBoard, int playerColor){
         /*
         Toma un Board y un color, y calcula todos los posibles movimientos 
         para ese color
         */
+        
         ArrayList<int[]> possibleMovements = new ArrayList<>();
         
-        for (int row = 0; row < rootBoard.values.length; row++) {
-            for (int col = 0; col < rootBoard.values.length; col++) {
+        for ( int row = 0; row < rootBoard.values.length; row++ ) {
+            for ( int col = 0; col < rootBoard.values.length; col++ ) {
                 //LEFT:1, TOP:2, RIGTH:4, BOTTOM:8, WHITE:16, BLACK:32
-                // Comento izquierda y arrbia asumiendo que esas posiciones ya están revisadas
+                // Comento izquierda y arrbia asumiendo que esas posiciones 
+                // ya están revisadas
                 if((rootBoard.values[row][col] & Board.RIGHT)!=Board.RIGHT) {
                     int[] posMove = new int[4];
-                    posMove[0] = ccolor;
+                    posMove[0] = playerColor;
                     posMove[1] = row;
                     posMove[2] = col;
-                    posMove[3] = Board.RIGHT; // RIGTH
-                    // System.out.println(color + " PM "+posMove[0]+posMove[1]
-                    //        +posMove[2]+posMove[3]);
-                    //System.out.println("RIGHT"+Board.RIGHT);
+                    posMove[3] = Board.RIGHT; 
                     possibleMovements.add(posMove);
                 }
                 if((rootBoard.values[row][col] & Board.BOTTOM)!=Board.BOTTOM) {
                     int[] posMove = new int[4];
-                    posMove[0] = ccolor;
+                    posMove[0] = playerColor;
                     posMove[1] = row;
                     posMove[2] = col;
-                    posMove[3] = Board.BOTTOM; // BOTTOM
-                    //System.out.println(color + " PM "+posMove[0]+posMove[1]
-                    //        +posMove[2]+posMove[3]);
-                    //System.out.println("BOTTOM"+Board.BOTTOM);
+                    posMove[3] = Board.BOTTOM;
                     possibleMovements.add(posMove);
                 }
             }
@@ -124,9 +131,9 @@ public class AlphaGOAgentProgram implements AgentProgram {
         
         Board rootBoard = root.board;
         boolean rootMaxPlayer = root.maxPlayer;
-        int currentDepth = root.depth;
+        int rootDepth = root.depth;
         int[] pastMove = root.move;
-        if (currentDepth >= maxDepth) {
+        if (rootDepth >= maxDepth) {
             return root;
         }
         int ccolor;
@@ -147,11 +154,7 @@ public class AlphaGOAgentProgram implements AgentProgram {
             }
         }
         
-        int[] mBoard = new int[4]; // color, row, col, side
-        Board cBoard = new Board(size);
-        
         ArrayList<int[]> possibleMovements = possibleMovements(rootBoard, ccolor);
-        
         
         if ( possibleMovements.size() == 0) {
             return root;
@@ -159,16 +162,13 @@ public class AlphaGOAgentProgram implements AgentProgram {
         
         boolean isWhite = (ccolor==1)? true:false;
         int cont = 0;
-        //System.out.println("PM SIZE " + possibleMovements.size());
                 
         for( int i = 0; i < possibleMovements.size(); i++) {
             int[] pm = possibleMovements.get(i);
             // create TreeNodes
             Board boardCopy = copyBoard(rootBoard, null, 2);
             if(boardCopy.play(isWhite,pm[1],pm[2],pm[3])) {
-                //System.out.println(color + "PLAY"+pm[1]+pm[2]+pm[3]);
-                //System.out.println(boardCopy.toString());
-                root.addChild(boardCopy, pm, true, currentDepth+1);
+                root.addChild(boardCopy, pm, !rootMaxPlayer, rootDepth+1);
                 TreeNode child = root.children.get(cont);
                 child = createGameTree(child, maxDepth,size);
             }
@@ -281,17 +281,6 @@ public class AlphaGOAgentProgram implements AgentProgram {
         
         return adjacents;
     }
-    
-    /*public boolean printTree(TreeNode root) {
-        if(root.children.size() == 0) {
-            System.out.println("TREENODE: "+root.depth);
-            System.out.println(root.board.toString());
-            return true;
-        }
-        else {
-            return printTree(root.children.get(0));
-        }
-    }*/
     
     public TreeNode prueba(Percept p) {
         System.out.println("PRUEBA ");
@@ -462,7 +451,7 @@ class TreeNode {
     
     public StringBuilder printTree(StringBuilder buffer, String prefix, String childrenPrefix) {
         buffer.append(prefix);
-        buffer.append(depth);
+        buffer.append(move[0]);
         buffer.append('\n');
         
         for (Iterator<TreeNode> it = children.iterator(); it.hasNext();) {
@@ -474,19 +463,6 @@ class TreeNode {
             }
         }
         return buffer;
-        /*String m = Integer.toString(depth);
-        buffer.append(prefix);
-        buffer.append(m);
-        buffer.append('\n');
-        System.out.println("THIS" + this);
-        for (Iterator<TreeNode> it = children.iterator(); it.hasNext();) {
-            TreeNode next = it.next();
-            if (it.hasNext()) {
-                next.printTree(buffer, childrenPrefix + "├── ", childrenPrefix + "│   ");
-            } else {
-                next.printTree(buffer, childrenPrefix + "└── ", childrenPrefix + "    ");
-            }
-        }*/
     }
     // other features ..
 }
