@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Iterator;
+import java.util.Stack;
 
 import speco.array.Array;
 import uniltiranyu.Action;
@@ -51,15 +52,27 @@ public class AlphaGOAgentProgram implements AgentProgram {
             bcopy = new Board(size);
             
             for ( int i = 0; i < size; i++ ) {
-                for ( int j = 0; j < size; j++ ) {       
+                for ( int j = 0; j < size; j++ ) {
+                    if(((String)p.get(i+":"+j)).equals(Squares.SPACE)) {
+                        bcopy.values[i][j] |= 0;
+                    }
+                    else if(((String)p.get(i+":"+j)).equals(Squares.BLACK)) {
+                        bcopy.values[i][j] |= Board.BLACK;
+                    }
+                    else {
+                        bcopy.values[i][j] |= Board.WHITE;
+                    }
+                        
                     if(((String)p.get(i+":"+j+":"+Squares.LEFT)).equals(Squares.TRUE))
-                        bcopy.play(isWhite, i, j, Board.LEFT);             
+                        bcopy.values[i][j] |= Board.LEFT;
                     if(((String)p.get(i+":"+j+":"+Squares.TOP)).equals(Squares.TRUE))
-                        bcopy.play(isWhite, i, j, Board.TOP);
+                        bcopy.values[i][j] |= Board.TOP;
                     if(((String)p.get(i+":"+j+":"+Squares.BOTTOM)).equals(Squares.TRUE))
-                        bcopy.play(isWhite, i, j, Board.BOTTOM);
+                        bcopy.values[i][j] |= Board.BOTTOM;
                     if(((String)p.get(i+":"+j+":"+Squares.RIGHT)).equals(Squares.TRUE))
-                        bcopy.play(isWhite, i, j, Board.RIGHT);
+                        bcopy.values[i][j] |= Board.RIGHT;
+                     
+                    
                 }
             }
             
@@ -128,7 +141,6 @@ public class AlphaGOAgentProgram implements AgentProgram {
     
     public TreeNode createGameTree(TreeNode root, int maxDepth, int size
             /*ArrayList<int[]> posMoves*/){
-        
         Board rootBoard = root.board;
         boolean rootMaxPlayer = root.maxPlayer;
         int rootDepth = root.depth;
@@ -136,31 +148,34 @@ public class AlphaGOAgentProgram implements AgentProgram {
         if (rootDepth >= maxDepth) {
             return root;
         }
+        
+        boolean isWhite = (Squares.WHITE.equals(color) && rootMaxPlayer)? true: false;
         int ccolor;
+        
         if(rootMaxPlayer) {
-            if(Squares.WHITE.equals(color)){
+            if(color.equals(Squares.WHITE)) {
+                isWhite = true;
                 ccolor = 1;
+            } else {
+                isWhite = false;
+                ccolor = 0;
             }
-            else {
+        } else {
+            if(color.equals(Squares.WHITE)){
+                isWhite = false;
+                ccolor = 1;
+            } else {
+                isWhite = true;
                 ccolor = 0;
             }
         }
-        else {
-            if(Squares.WHITE.equals(color)){
-                ccolor = 0;
-            }
-            else {
-                ccolor = 1;
-            }
-        }
+        
         
         ArrayList<int[]> possibleMovements = possibleMovements(rootBoard, ccolor);
-        
         if ( possibleMovements.size() == 0) {
             return root;
         }
         
-        boolean isWhite = (ccolor==1)? true:false;
         int cont = 0;
                 
         for( int i = 0; i < possibleMovements.size(); i++) {
@@ -171,13 +186,14 @@ public class AlphaGOAgentProgram implements AgentProgram {
                 root.addChild(boardCopy, pm, !rootMaxPlayer, rootDepth+1);
                 TreeNode child = root.children.get(cont);
                 child = createGameTree(child, maxDepth,size);
+                cont ++;
             }
             else {
                 //System.out.println(color + "NO PLAY");
                 //System.out.println("PM |"+pm[0]+" | "+pm[1]+" | "
                 //        +pm[2]+" | "+pm[3]);
             }
-            cont ++;
+            
         }
         
         return root;
@@ -188,38 +204,71 @@ public class AlphaGOAgentProgram implements AgentProgram {
         Board board = node.board;
         int scoreWhite = board.white_count();
         int scoreBlack = board.black_count();
-        int score = scoreWhite-scoreBlack;
+        int score;
+        if( color.equals(Squares.WHITE) )
+             score = scoreWhite-scoreBlack;
+        else 
+            score = scoreBlack - scoreWhite;
         return score;
     }
     
     // Alpha Beta Algorithm  
-    public int decisionAlphaBeta(TreeNode node, int depth, int alpha, int beta, boolean maxPlayer) {
+    public int[] decisionAlphaBeta(TreeNode node, int depth, int alpha, 
+            int beta, boolean maxPlayer, Stack<int[]> oldStack) {
+        Stack<int[]> moveStack = oldStack;
         int value;
+        int[] act_value = new int[5]; // 0: isWhite, 1: i, 2: j, 3: side, 4: value
         if (depth == 0 || node.children == null) {
-            return evaluate(node);
+            value = evaluate(node);
+            act_value[0] = node.move[0];
+            act_value[1] = node.move[1];
+            act_value[2] = node.move[2];
+            act_value[3] = node.move[3];
+            act_value[4] = value;
+            return act_value;
         }
         if (maxPlayer) {
             value = -2147483648; // - infinite 
+            moveStack.add(node.move);
             for (TreeNode childNode : node.children) {
-                value = max(value, decisionAlphaBeta(childNode, depth-1, alpha, beta, false));
+                int oldValue = value;
+                int newValue = decisionAlphaBeta(childNode, depth-1, alpha, beta, false, moveStack)[4];
+                value = max(oldValue, newValue);
+                if(value == newValue) {
+                    act_value[0] = childNode.move[0];
+                    act_value[1] = childNode.move[1];
+                    act_value[2] = childNode.move[2];
+                    act_value[3] = childNode.move[3];
+                    act_value[4] = value;
+                } 
                 alpha = max(alpha, value);
                 if (alpha >= beta) {
                     break;
                 }
             }
-            return value;
+            return act_value;
         }
         
         else {
             value = 2147483647; // + infinite
+            moveStack.add(node.move);
             for (TreeNode childNode : node.children) {
-                value = min(value, decisionAlphaBeta(childNode, depth-1, alpha, beta, true));
+                int oldValue = value; 
+                int newValue = decisionAlphaBeta(childNode, depth-1, alpha, beta, true, moveStack)[4];
+                value = min(oldValue, newValue);
+                if (value == newValue) {
+                    act_value[0] = childNode.move[0];
+                    act_value[1] = childNode.move[1];
+                    act_value[2] = childNode.move[2];
+                    act_value[3] = childNode.move[3];
+                    act_value[4] = value;
+                }
                 beta = min(beta, value);
                 if (beta <= alpha) {
                     break;
                 }
             }
-            return value;
+            return act_value;
         }
     }
     
@@ -241,13 +290,13 @@ public class AlphaGOAgentProgram implements AgentProgram {
     }
     
     //
-    public int[] getAdjacent(Percept p, int row, int col, ArrayList<String> possibleMovements) {
+    public int[] getAdjacent(Percept p, int row, int col, ArrayList<String> pMovements) {
         
         int[] adjacents = new int[4];
         int size = Integer.parseInt((String)p.get(Squares.SIZE));
         int linesLeft = 5, linesBottom = 5, linesRight = 5, linesTop = 5;
         
-        for (String pm: possibleMovements) {
+        for (String pm: pMovements) {
             switch(pm) {
                 case "left":
                     if (col - 1 >= 0) {
@@ -287,7 +336,6 @@ public class AlphaGOAgentProgram implements AgentProgram {
         TreeNode root = createGameTreeRoot(p);
         int maxDepth = 3;
         int size = Integer.parseInt((String)p.get(Squares.SIZE));
-        ArrayList<int[]> posM = new ArrayList<>();
         root = createGameTree(root, maxDepth, size);
         System.out.println("ROOT"+root.depth);
         System.out.println(root.board.toString());
@@ -295,6 +343,11 @@ public class AlphaGOAgentProgram implements AgentProgram {
         String prefix = "|"; 
         String childrenPrefix = "-";
         System.out.println(root.printTree(buffer, prefix, childrenPrefix));
+        
+        int[] av = new int[5];
+        av = decisionAlphaBeta(root, 1, -2147483646, 2147483647,true);
+        
+        System.out.println("ACTIONVALUE "+av[0]+" "+av[1]+" "+av[2]+" "+av[3]+" "+av[4]);
         return root;
         
     }
@@ -307,9 +360,54 @@ public class AlphaGOAgentProgram implements AgentProgram {
      */
     public Action compute(Percept p) {
         // Determines if it is the agents turn
-        TreeNode pr = prueba(p);
-        
-        if( p.get(Squares.TURN).equals(color) ){
+        //TreeNode r = prueba(p);
+        //long time = (long)(3000);
+        //try{
+        //   Thread.sleep(time);
+        //}catch(Exception e){}
+        if(Integer.parseInt((String)p.get(Squares.SIZE)) <= 5) {
+            if (p.get(Squares.TURN).equals(color)) {}
+                    int[] ij = new int[2];
+                    String v = new String();
+                    TreeNode root = createGameTreeRoot(p);
+                    int maxDepth = 4;
+                    root = createGameTree(root, maxDepth, Integer.parseInt((String)p.get(Squares.SIZE)));
+                    int[] av;
+                    av = decisionAlphaBeta(root, maxDepth, -2147483646, 2147483647,true);
+                    System.out.println(color + " " + av[1] + av[2] + av[3]);
+                    ij[0] = av[1];
+                    ij[1] = av[2];
+                    switch(av[3]) {
+                        case 1:
+                            v = Squares.LEFT;
+                            break;
+                        case 2:
+                            v = Squares.TOP;
+                            break;
+                        case 4: 
+                            v = Squares.RIGHT;
+                            break;
+                        case 8:
+                            v = Squares.BOTTOM;
+                            break;
+                        default:
+                            v = Squares.PASS;
+                            System.out.println("No quiero que pase :'c");
+                            break;
+                    }
+                    System.out.println(color + "FASE 2");
+                try{
+            	String move = v;
+                int i = ij[0];
+                int j = ij[1];
+            	// Action( i+":"+j+":"+Squares.BOTTOM ) 
+            	// draws bottom border of square (i,j)
+                System.out.println("AG: "+color+" "+i+":"+j+":"+move);
+                return new Action( i+":"+j+":"+move);
+                }catch(Exception e){}
+        }
+    
+        else if ( p.get(Squares.TURN).equals(color) ){
             // Gets the size of the board
             int size = Integer.parseInt((String)p.get(Squares.SIZE));
             // Gets an square randomly and try to draw a border if possible
@@ -325,7 +423,7 @@ public class AlphaGOAgentProgram implements AgentProgram {
                 for (int j = 0; j < size; j++) {
                     pm = linesOnBox(p, i, j);
                     count = 4-pm.size();
-                    System.out.println("Count: "+count+"| pm:"+pm+"| i:"+i+"| j:"+j);
+                    System.out.println(color + " Count: "+count+"| pm:"+pm+"| i:"+i+"| j:"+j);
                     if (count < 2) {
                         adjs = getAdjacent(p, i, j, pm);
                         for(int k = 0; k < 4; k++) {
@@ -361,7 +459,7 @@ public class AlphaGOAgentProgram implements AgentProgram {
                                 break;
 
                             default:
-                                v = Squares.TOP;
+                                v = Squares.PASS;
                                 System.out.println("NO POSIBLE MOVEMENTS");
                                 break;
                         }
@@ -372,27 +470,49 @@ public class AlphaGOAgentProgram implements AgentProgram {
                         pos = -1;
                         break inicio;
                     }
+                    //else {
+                        
+                        //ij[0] = -1;
+                        //ij[1] = -1;
+                        //v = "fase2";
+                    //}
                 }
-            }
-            
-            if (v == null) {
-                    v = "";
-                    int i1=0,j1=0;
-                    while(v==""){
-                        i1 = (int)(size*Math.random());
-                        j1 = (int)(size*Math.random());
-                        pm = linesOnBox(p, i1, j1);
-                        if(pm.size()>0){
-                            v=pm.get(0);
-                        }
+                
+                boolean fase2 = (v.equals(Squares.PASS))? false:true;
+                
+                if(fase2) {
+                    // FASE 2
+                    TreeNode root = createGameTreeRoot(p);
+                    int maxDepth = 3;
+                    root = createGameTree(root, maxDepth, size);
+                    int[] av;
+                    av = decisionAlphaBeta(root, 1, -2147483646, 2147483647,true);
+                    System.out.println(color + " " + av[1] + av[2] + av[3]);
+                    ij[0] = av[1];
+                    ij[1] = av[2];
+                    switch(av[3]) {
+                        case 1:
+                            v = Squares.LEFT;
+                            break;
+                        case 2:
+                            v = Squares.TOP;
+                            break;
+                        case 4: 
+                            v = Squares.RIGHT;
+                            break;
+                        case 8:
+                            v = Squares.BOTTOM;
+                            break;
+                        default:
+                            v = Squares.PASS;
+                            System.out.println("No quiero que pase :'c");
+                            break;
                     }
-                    ij[0] = i1;
-                    ij[1] = j1;
-                    System.out.println("Si es ESTE");
-                    pos = -1; 
+                    System.out.println(color + "FASE 2");
+                    pos = -1;
                 }
-                 
-            
+                
+            }
             try{
             	String move = v;
                 int i = ij[0];
@@ -424,6 +544,7 @@ class TreeNode {
     public TreeNode(Board board, int[] move, boolean maxPlayer, int depth) {
         this.depth = depth;
         this.board = board;
+        this.maxPlayer = maxPlayer;
         this.move = move;
         this.children = new LinkedList<TreeNode>();
     }
@@ -450,8 +571,9 @@ class TreeNode {
     }
     
     public StringBuilder printTree(StringBuilder buffer, String prefix, String childrenPrefix) {
+        String sb = "MOVE "+move[1]+" "+move[2]+" "+move[3];
         buffer.append(prefix);
-        buffer.append(move[0]);
+        buffer.append(sb);
         buffer.append('\n');
         
         for (Iterator<TreeNode> it = children.iterator(); it.hasNext();) {
