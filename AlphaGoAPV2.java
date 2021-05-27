@@ -346,7 +346,7 @@ public class AlphaGoAPV2 implements AgentProgram {
     public TreeNode prueba(Percept p) {
         System.out.println("PRUEBA ");
         TreeNode root = createGameTreeRoot(p);
-        int maxDepth = 3;
+        int maxDepth = 6;
         int size = Integer.parseInt((String)p.get(Squares.SIZE));
         root = createGameTree(root, maxDepth, size);
         System.out.println("ROOT"+root.depth);
@@ -357,7 +357,7 @@ public class AlphaGoAPV2 implements AgentProgram {
         System.out.println(root.printTree(buffer, prefix, childrenPrefix));
         
         int[] av = new int[5];
-        av = decisionAlphaBeta(root, 1, -2147483646, 2147483647,true);
+        av = decisionAlphaBeta(root, 5, -2147483646, 2147483647,true);
         
         System.out.println("ACTIONVALUE "+av[0]+" "+av[1]+" "+av[2]+" "+av[3]+" "+av[4]);
         return root;
