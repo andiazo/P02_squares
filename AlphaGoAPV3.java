@@ -20,7 +20,7 @@ import uniltiranyu.Percept;
 
 /**
  *
- * @author AndresDiaz
+ * @author AndresDiaz, DianaMunoz, JulianPereira
  */
 
 public class AlphaGoAPV3 implements AgentProgram {
@@ -369,7 +369,6 @@ public class AlphaGoAPV3 implements AgentProgram {
                         break;
                     default:
                         v = Squares.PASS;
-                        System.out.println("No quiero que pase :'c");
                         break;
                 }
                 /*System.out.println(color + "FASE 2");
@@ -383,7 +382,7 @@ public class AlphaGoAPV3 implements AgentProgram {
                 int j = ij[1];
                 // Action( i+":"+j+":"+Squares.BOTTOM ) 
                 // draws bottom border of square (i,j)
-                System.out.println("AG MINIMAX: "+color+" "+i+":"+j+":"+move);
+                //System.out.println("AG MINIMAX: "+color+" "+i+":"+j+":"+move);
             return new Action( i+":"+j+":"+move);
             }catch(Exception e){}
             }
@@ -406,7 +405,7 @@ public class AlphaGoAPV3 implements AgentProgram {
                 for (int j = 0; j < size; j++) {
                     pm = linesOnBox(p, i, j);
                     count = 4-pm.size();
-                    System.out.println(color + " Count: "+count+"| pm:"+pm+"| i:"+i+"| j:"+j);
+                   // System.out.println(color + " Count: "+count+"| pm:"+pm+"| i:"+i+"| j:"+j);
                     if (count < 2) {
                         adjs = getAdjacent(p, i, j, pm);
                         for(int k = 0; k < 4; k++) {
@@ -459,10 +458,10 @@ public class AlphaGoAPV3 implements AgentProgram {
                             default:
                                 fase2 = true;
                                 v = "FASE2";
-                                System.out.println("NO POSIBLE MOVEMENTS");
+                    //            System.out.println("NO POSIBLE MOVEMENTS");
                                 break;
                         }
-                        System.out.println(pm);
+                    //    System.out.println(pm);
                         if(!v.equals("FASE2")) {
                             break inicio;
                         }
@@ -474,16 +473,18 @@ public class AlphaGoAPV3 implements AgentProgram {
             try{
                 if(v=="FASE2") {
                     // FASE 2
-                    System.out.println("FASE 2");
-                    int b = 2*size*(size-1);
-                    int O = 7000000;
-                    int m = (int) (Math.log(O)/Math.log(b));
+                    //System.out.println("Fase 2");
                     TreeNode root = createGameTreeRoot(p);
-                    int maxDepth = 4;
+                    int maxDepth;
+                    if(size > 8) {
+                        maxDepth = 1;
+                    } else {
+                        maxDepth = 4;
+                    }
                     int[] av;
-                    System.out.println("Maximum Depth : " + maxDepth);
-                    av = bestMove(root, m, -2147483646, 2147483647,true);
-                    System.out.println(color + " " + av[1] + av[2] + av[3]);
+                    //System.out.println("Maximum Depth : " + maxDepth);
+                    av = bestMove(root, maxDepth, -2147483646, 2147483647,true);
+                    //System.out.println(color + " " + av[1] + av[2] + av[3]);
                     ij[0] = av[1];
                     ij[1] = av[2];
                     switch(av[3]) {
@@ -501,7 +502,7 @@ public class AlphaGoAPV3 implements AgentProgram {
                             break;
                         default:
                             v = Squares.PASS;
-                            System.out.println("No quiero que pase :'c");
+                            //System.out.println("No quiero que pase :'c");
                             break;
                     }
                 }
@@ -510,7 +511,7 @@ public class AlphaGoAPV3 implements AgentProgram {
                 int j = ij[1];
             	// Action( i+":"+j+":"+Squares.BOTTOM ) 
             	// draws bottom border of square (i,j)
-                System.out.println("AG: "+color+" "+i+":"+j+":"+move);
+                //System.out.println("AG: "+color+" "+i+":"+j+":"+move);
                 return new Action( i+":"+j+":"+move);
             }catch(Exception e){}
         }
@@ -523,3 +524,60 @@ public class AlphaGoAPV3 implements AgentProgram {
     }
 }
 
+// -----------------------------------------------------------------------------
+// Data Structures Required
+class TreeNode {
+    Board board;
+    int[] move;
+    int depth;
+    boolean maxPlayer;
+    TreeNode parent;
+    List<TreeNode> children;
+    
+    public TreeNode(Board board, int[] move, boolean maxPlayer, int depth) {
+        this.depth = depth;
+        this.board = board;
+        this.maxPlayer = maxPlayer;
+        this.move = move;
+        this.children = new LinkedList<TreeNode>();
+    }
+    
+    public TreeNode(Board board, boolean maxPlayer, int depth) {
+        this.depth = depth;
+        this.board = board;
+        this.maxPlayer = maxPlayer;
+        this.children = new LinkedList<TreeNode>();
+    }
+
+    public TreeNode addChild(Board cBoard, int[] mBoard, boolean maxPlayer, int depth) {
+        TreeNode childNode = new TreeNode(cBoard, mBoard, maxPlayer, depth);
+        childNode.parent = this;
+        this.children.add(childNode);
+        return childNode;
+    }
+    
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        String s = Integer.toString(depth);
+        sb.append(s);
+        return sb.toString();
+    }
+    
+    public StringBuilder printTree(StringBuilder buffer, String prefix, String childrenPrefix) {
+        String sb = "MOVE "+move[1]+" "+move[2]+" "+move[3];
+        buffer.append(prefix);
+        buffer.append(sb);
+        buffer.append('\n');
+        
+        for (Iterator<TreeNode> it = children.iterator(); it.hasNext();) {
+            TreeNode next = it.next();
+            if (it.hasNext()) {
+                next.printTree(buffer, childrenPrefix + "├── ", childrenPrefix + "│   ");
+            } else {
+                next.printTree(buffer, childrenPrefix + "└── ", childrenPrefix + "    ");
+            }
+        }
+        return buffer;
+    }
+    // other features ..
+}
